@@ -1,4 +1,9 @@
-# justinstall
+# 📦 justinstall
+
+
+https://github.com/Explosion-Scratch/justinstall/assets/61319150/4a05e6e0-065a-493f-97ae-b7f5e2bc0265
+
+<i>In the above recording I installed fzf, mise, Google Chrome, Cursor, and pocketbase.</i>
 
 `justinstall`: Just install **almost anything**!! It's goal is to make it easy to install software from GitHub repositories, direct URLs, or local files.
 
@@ -54,3 +59,6 @@ Don't use on windows. I don't have windows so I haven't tested it on windows. It
 This tool attempts to install software as safely as possible, but I'm not responsible if you install malware of if this breaks your system or harms anything in any way directly or indirectly. Always verify the source and contents of packages before installation.
 
 Less scary note: I've included confirmations for many operations as a failsafe.
+
+### Why's does the recording have errors:
+<small>Ignore the mise errors, I uninstalled it before recording to install it again. Also the regex thought it detected an install script but it didn't.</small>
