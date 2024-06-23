@@ -6,8 +6,22 @@ const os = require("os");
 
 let tmpdir;
 
-const HELP = `install`;
+const OSC = "\u001B]";
+const SEP = ";";
+const BEL = "\u0007";
+const link = (text, url) =>
+  [OSC, "8", SEP, SEP, url, BEL, text, OSC, "8", SEP, SEP, BEL].join("");
+
+const HELP = `justinstall <github-url|file-url|local-file>\n\tv1.0.0 - Just install anything. Supports .tar.gz, .zip, .dmg, .app, .pkg, and .deb files. Binaries will be installed to ~/.local/bin.\n\n\tExample:\n\t\tjustinstall atuinsh/atuin\n\t\tjustinstall https://github.com/junegunn/fzf/\n\t\tjustinstall https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg\n\t\tjustinstall tailscale.pkg\n\n\tMade by ${link(
+  "Explosion-Scratch",
+  "https://github.com/explosion-scratch"
+)}`;
 async function main() {
+  const INSTALL_SNIPPET_REPLACEMENTS = [
+    [/^\$ +/, ""],
+    ["npm install", "pnpm i"],
+    ["yarn install", "pnpm i"],
+  ];
   const log = {
     debug: (message) =>
       console.log(`${colors.fg.cyan}${message}${colors.reset}`),
@@ -19,7 +33,7 @@ async function main() {
       console.warn(`${colors.fg.yellow}${message}${colors.reset}`),
   };
 
-  const args = process.argv.slice(2);
+  let args = process.argv.slice(2);
   if (["-h", "--help"].includes(args[0])) {
     return log.log(HELP);
   }
@@ -31,6 +45,9 @@ async function main() {
     /^https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/.test(
       args[0]
     );
+  if (!isFile && !isURL && /^[a-z_\-0-9]+\/[a-z_\-0-9]+$/.test(args[0])) {
+    args[0] = `https://github.com/${args[0]}`;
+  }
   let filepath = isFile ? path.resolve(args[0]) : null;
 
   if (isFile) {
@@ -42,7 +59,16 @@ async function main() {
 
   if (isURL && !args[0].includes("://github.com")) {
     log.debug("Downloading file from URL...");
-    let response = await fetch(args[0]);
+    let origin;
+    try {
+      origin = new URL(args[0]).origin;
+    } catch (e) {}
+    let response = await fetch(args[0], {
+      headers: {
+        ...(origin && { origin }),
+      },
+      referrer: `https://${origin}` || args[0],
+    });
     const disposition = response.headers.get("Content-Disposition");
     const filenameRegex = /filename="?([^;"]+)"/;
     const match = disposition && disposition.match(filenameRegex);
@@ -67,6 +93,10 @@ async function main() {
     arm64: ["arm64", "arm", "aarch", "aarh64"],
     x64: ["x64", "intel"],
     universal: ["universal", "all"],
+  };
+  let boosters = {
+    darwin: ["pkg", "dmg"],
+    linux: ["AppImage"],
   };
   let platform_aliases = {
     darwin: ["darwin", "osx", "macos", "mac", "apple"],
@@ -115,6 +145,7 @@ async function main() {
   };
 
   const IGNORE = [
+    "Applications",
     "checksums",
     "release_notes",
     "readme",
@@ -145,10 +176,8 @@ async function main() {
       .then((r) => r.json())
       .then((a) => ((body = a.body), a))
       .then((j) => j.assets)
+      .then((a) => (log.debug("Found " + a.length + " assets"), a))
       .then((assets) => {
-        if (!assets?.length) {
-          throw new Error("No assets in releases");
-        }
         return assets.filter((asset) => !isIgnored(asset.name));
       });
 
@@ -166,16 +195,38 @@ async function main() {
     }));
 
     let code = getCode(body)?.trim();
-    const isInstaller = (code) =>
-      code.includes("| sh") ||
-      code.includes("| bash") ||
-      code.includes("curl ") ||
-      code.includes("wget ") ||
-      code.includes("installer.sh") ||
-      code.includes(".sh");
+    const isInstaller = (code) => {
+      if (!code){return false}
+      code = code.toLowerCase().trim();
+      if (
+        code.includes("installing") ||
+        code.includes("](#") ||
+        code.includes("](http") ||
+        code.startsWith("- [")
+      ) {
+        return false;
+      }
+      return (
+        code.includes("| sh") ||
+        code.includes("| bash") ||
+        code.includes("curl ") ||
+        code.includes("wget ") ||
+        code.includes("install") ||
+        code.includes("setup") ||
+        code.includes("installer.sh") ||
+        code.includes(".sh") ||
+        code.includes("sudo emerge")
+      );
+    };
 
     if (code && isInstaller(code)) {
-      log.debug("Found installer code in release notes:\n\n" + code + "\n\n");
+      log.debug(
+        "Found installer code in release notes:\n\n\t" +
+          colors.fg.green +
+          code +
+          colors.reset +
+          "\n"
+      );
       if (
         await confirm(
           "Run install script (y) or continue to regular installation (n)?"
@@ -185,6 +236,48 @@ async function main() {
         execSync(code);
         return;
       }
+    } else {
+      // Assuming branch is main - yikes
+      const readme = await fetch(
+        `https://raw.githubusercontent.com/${owner}/${repo}/main/README.md`
+      ).then((r) => r.text());
+      const re =
+        /(?:(?:```(?<lang>\w*)?\n(?<code>[\s\S]*?)```)|(?:\s+\n(?:\t| +)(?<code2>[\s\S]*?)\n))/;
+      const codeBlocks = readme
+        .match(new RegExp(re, "g"))
+        ?.filter(Boolean)
+        .map(
+          (code) =>
+            code?.match(re)?.groups?.code || code?.match(re)?.groups?.code2
+        )
+        .map((i) => i?.trim())
+        .filter(Boolean)
+        .filter(isInstaller);
+      if (codeBlocks?.length) {
+        let b = codeBlocks[0].trim();
+        for (let [k, v] of INSTALL_SNIPPET_REPLACEMENTS) {
+          b = b.replace(k, v);
+        }
+        log.log(
+          `Found possible install snippet in README:\n\n\t${colors.fg.green}${b}${colors.reset}\n`
+        );
+        if (
+          await confirm(
+            "Run script in shell (y) or proceed to normal installation (n)?",
+            "n"
+          )
+        ) {
+          log.debug("Running script...");
+          execSync(b);
+          log.debug("Done installing");
+          return;
+        } else {
+          log.debug("Continuing to regular installation.");
+        }
+      }
+    }
+    if (!assets?.length) {
+      throw new Error("No assets in releases");
     }
     let installerScript = assets.find((i) => i.name.includes("installer.sh"));
     if (installerScript) {
@@ -204,7 +297,13 @@ async function main() {
     let compat = assets
       .map((asset) => {
         asset.points = 0;
-
+        if (boosters[platform]) {
+          for (let i of boosters[platform]) {
+            if (asset.name.includes(i)) {
+              asset.points += 0.1;
+            }
+          }
+        }
         if (asset.compatiblePlatforms.length) {
           if (incl(asset.compatiblePlatforms, my_platform)) {
             asset.points += 1;
@@ -232,7 +331,7 @@ async function main() {
     if (!compat?.length) {
       return log.error(
         "Couldn't find a binary, you'll have to figure it out yourself 🤷:\n" +
-          `https://github.com/${owner}/${repo}`
+          `${colors.fg.green}https://github.com/${owner}/${repo}${colors.reset}`
       );
     }
     selected = compat[0];
@@ -498,7 +597,9 @@ function confirm(question, defaultAnswer = "y") {
       output: process.stdout,
     });
     interface.question(
-      `${colors.fg.yellow}${question}${colors.reset} ${colors.fg.blue}(${defaultAnswer}/n)${colors.reset} `,
+      `${colors.fg.yellow}${question}${colors.reset} ${colors.fg.blue}(${
+        defaultAnswer.toLowerCase() == "y" ? "Y" : "y"
+      }/${defaultAnswer.toLowerCase() == "n" ? "N" : "n"})${colors.reset} `,
       (ans) => {
         let result =
           ans.trim().toLowerCase() === "y" ||
