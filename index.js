@@ -198,6 +198,8 @@ async function main() {
     const isInstaller = (code) => {
       if (!code){return false}
       code = code.toLowerCase().trim();
+      // Looking for a one-to-three-liner e.g. pnpm i -g thing or sudo apt install package
+      if (code.split("\n").length > 3){return false}
       if (
         code.includes("installing") ||
         code.includes("](#") ||
