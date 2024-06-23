@@ -16,6 +16,7 @@ Grab the binary from the github releases (ironically you can use this tool to in
 - Provides interactive prompts for user confirmation during installation
 - Handles code signing and quarantine removal for macOS applications
 - Offers detailed logging and error handling
+  Confirmation for overwriting
 
 ## Installation
 
@@ -48,6 +49,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 Created by [Explosion-Scratch](https://github.com/explosion-scratch)
 
 ## Disclaimer
+Don't use on windows. I don't have windows so I haven't tested it on windows. It would probably still work well for binaries though.
 
 This tool attempts to install software as safely as possible, but I'm not responsible if you install malware of if this breaks your system or harms anything in any way directly or indirectly. Always verify the source and contents of packages before installation.
 
