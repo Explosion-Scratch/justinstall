@@ -1,5 +1,5 @@
 const readline = require("readline");
-const { execSync, exec } = require("child_process");
+const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
@@ -34,7 +34,7 @@ async function main() {
   };
 
   let args = process.argv.slice(2);
-  if (["-h", "--help"].includes(args[0])) {
+  if (args.find((i) => ["-h", "--help"].includes(i))) {
     return log.log(HELP);
   }
   if (!args[0]) {
@@ -56,6 +56,28 @@ async function main() {
 
   // Declare some stuff
   tmpdir = execSync("mktemp -d").toString().trim();
+
+  const saveURL = ({ isURL, isFile, url, path }) => {
+    const CONFIG_PATH = resolve(
+      os.homedir(),
+      ".config",
+      "justinstall",
+      "installations.json"
+    );
+    fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
+    let existing;
+    try {
+      existing = JSON.parse(fs.readFileSync(CONFIG_PATH));
+    } catch (e) {
+      existing = [];
+    }
+    existing.push({
+      date: new Date().toString(),
+      isURL,
+      isFile,
+      url,
+    });
+  };
 
   if (isURL && !args[0].includes("://github.com")) {
     log.debug("Downloading file from URL...");
@@ -90,8 +112,8 @@ async function main() {
   const platform = process.platform;
   log.debug(`Detected ${arch} on ${platform}`);
   let arch_aliases = {
-    arm64: ["arm64", "arm", "aarch", "aarh64"],
-    x64: ["x64", "intel"],
+    arm64: ["arm64", "arm", "aarch", "aarch64", "aar64", "silicon"],
+    x64: ["x64", "intel", "x86_64"],
     universal: ["universal", "all"],
   };
   let boosters = {
@@ -196,10 +218,14 @@ async function main() {
 
     let code = getCode(body)?.trim();
     const isInstaller = (code) => {
-      if (!code){return false}
+      if (!code) {
+        return false;
+      }
       code = code.toLowerCase().trim();
       // Looking for a one-to-three-liner e.g. pnpm i -g thing or sudo apt install package
-      if (code.split("\n").length > 3){return false}
+      if (code.split("\n").length > 3) {
+        return false;
+      }
       if (
         code.includes("installing") ||
         code.includes("](#") ||
@@ -436,14 +462,47 @@ async function main() {
   } else if (!selected.extension) {
     fs.renameSync(p, path.join(OUTPUT_DIR, selected.name));
   }
-  let binaries = fs.readdirSync(OUTPUT_DIR).filter((i) => !isIgnored(i));
+  const getBinaries = (dir) => {
+    const allFiles = execSync(
+      `find ${JSON.stringify(path.resolve(dir))} -type f ! -size 0`
+    )
+      .toString()
+      .split("\n")
+      .filter(Boolean)
+      .map((i) => i.replace(path.resolve(dir) + path.sep, ""));
+    let out = [];
+    const ALLOWED = [
+      ".deb",
+      ".rpm",
+      ".dmg",
+      ".pkg",
+      ".app",
+      ".zip",
+      ".gz",
+      ".gz",
+    ];
+    out.push(
+      ...allFiles.filter((i) =>
+        ALLOWED.find((j) => i.toLowerCase().endsWith(j))
+      )
+    );
+    const isExecutable = (f) => {
+      return execSync(`file ${JSON.stringify(path.resolve(dir, f))}`).includes(
+        "executable"
+      );
+    };
+    out.push(...allFiles.filter(isExecutable));
+    return out;
+  };
+
+  let binaries = getBinaries(OUTPUT_DIR);
   const _dmg = binaries.find((f) => f.endsWith(".dmg"));
   if (_dmg) {
     isBinary = false;
     mountDMG(path.resolve(OUTPUT_DIR, _dmg));
   }
   // Do after possible DMG mounted
-  binaries = fs.readdirSync(OUTPUT_DIR).filter((i) => !isIgnored(i));
+  binaries = getBinaries(OUTPUT_DIR);
   const _app = binaries.find((f) => f.endsWith(".app"));
   const _pkg = binaries.find((f) => f.endsWith(".pkg"));
   if (
@@ -503,7 +562,6 @@ async function main() {
     installPkg(path.resolve(OUTPUT_DIR, _pkg));
     return;
   }
-
   if (isBinary) {
     if (!binaries.length) {
       return log.error("No binaries found");
@@ -519,8 +577,8 @@ async function main() {
   }
   if (isBinary) {
     log.debug("Installing binary");
-    for (let bin of fs.readdirSync(OUTPUT_DIR).filter((i) => !isIgnored(i))) {
-      const dest = path.join(os.homedir(), ".local", "bin", bin);
+    for (let bin of getBinaries(OUTPUT_DIR)) {
+      const dest = path.join(os.homedir(), ".local", "bin", path.basename(bin));
       await checkPath(dest);
       log.debug(`Installing binary: "${bin}" -> "${dest}"`);
       execSync(`chmod +x ${JSON.stringify(path.join(OUTPUT_DIR, bin))}`);
@@ -650,6 +708,7 @@ const colors = {
 };
 
 const cleanup = () => {
+  return;
   if (tmpdir) {
     console.log("Cleaning up...");
     fs.rmSync(tmpdir, { recursive: true });
