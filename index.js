@@ -4,7 +4,12 @@ const {
   performUpdate,
   listInstalled,
 } = require("./lib/updater");
-const { interactiveSearch, findFirstRepository } = require("./lib/search");
+const {
+  interactiveSearch,
+  findFirstRepository,
+  displaySearchResults,
+  selectRepositoryFromResults,
+} = require("./lib/search");
 const {
   createLogger,
   createLink,
@@ -17,7 +22,7 @@ const HELP = `justinstall <github-url|file-url|local-file> [options]
 \tBinaries will be installed to ~/.local/bin.
 
 \tOptions:
-\t  --search             Interactive search for GitHub repositories
+\t  --search [query]     Interactive search for GitHub repositories, or direct search with query
 \t  --first <query>      Find and install most-starred repo matching query
 \t  --update [package]   Update all packages or specific package
 \t  --list               List installed packages
@@ -29,6 +34,7 @@ const HELP = `justinstall <github-url|file-url|local-file> [options]
 \t  justinstall https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg
 \t  justinstall tailscale.pkg
 \t  justinstall --search
+\t  justinstall --search "terminal multiplexer"
 \t  justinstall --first "terminal multiplexer"
 \t  justinstall --update
 \t  justinstall --update tailscale
@@ -118,9 +124,32 @@ const main = async () => {
   }
 
   if (flags.search) {
-    const selectedRepo = await interactiveSearch();
-    if (selectedRepo) {
-      await performInstallation([selectedRepo.full_name]);
+    if (flags.searchQuery) {
+      // Direct search with query
+      const repos = await displaySearchResults(flags.searchQuery);
+      if (repos && repos.length > 0) {
+        const log = createLogger();
+        if (
+          await confirm(`Install the first result (${repos[0].full_name})?`)
+        ) {
+          await performInstallation([repos[0].full_name]);
+        } else {
+          // If user doesn't want the first result, show interactive selection
+          const selectedRepo = await selectRepositoryFromResults(
+            repos,
+            flags.searchQuery
+          );
+          if (selectedRepo) {
+            await performInstallation([selectedRepo.full_name]);
+          }
+        }
+      }
+    } else {
+      // Interactive search
+      const selectedRepo = await interactiveSearch();
+      if (selectedRepo) {
+        await performInstallation([selectedRepo.full_name]);
+      }
     }
     return;
   }
