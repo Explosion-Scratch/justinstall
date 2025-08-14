@@ -4,6 +4,7 @@ const {
   performUpdate,
   listInstalled,
 } = require("./lib/updater");
+const { interactiveSearch, findFirstRepository } = require("./lib/search");
 const {
   createLogger,
   createLink,
@@ -16,7 +17,9 @@ const HELP = `justinstall <github-url|file-url|local-file> [options]
 \tBinaries will be installed to ~/.local/bin.
 
 \tOptions:
-\t  --update [package]    Update all packages or specific package
+\t  --search             Interactive search for GitHub repositories
+\t  --first <query>      Find and install most-starred repo matching query
+\t  --update [package]   Update all packages or specific package
 \t  --list               List installed packages
 \t  -h, --help           Show this help
 
@@ -25,6 +28,8 @@ const HELP = `justinstall <github-url|file-url|local-file> [options]
 \t  justinstall https://github.com/junegunn/fzf/
 \t  justinstall https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg
 \t  justinstall tailscale.pkg
+\t  justinstall --search
+\t  justinstall --first "terminal multiplexer"
 \t  justinstall --update
 \t  justinstall --update tailscale
 \t  justinstall --update tailscale ./new-tailscale.pkg
@@ -109,6 +114,20 @@ const main = async () => {
 
   if (flags.list) {
     listInstalled();
+    return;
+  }
+
+  if (flags.search) {
+    const selectedRepo = await interactiveSearch();
+    if (selectedRepo) {
+      await performInstallation([selectedRepo.full_name]);
+    }
+    return;
+  }
+
+  if (flags.first) {
+    const repo = await findFirstRepository(flags.first);
+    await performInstallation([repo.full_name]);
     return;
   }
 
