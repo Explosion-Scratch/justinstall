@@ -1,0 +1,15 @@
+{
+  "selectedFiles": [
+    "lib/utils.js",
+    "lib/config.js",
+    "lib/search.js",
+    "lib/sources.js",
+    "lib/updater.js",
+    "lib/installer.js",
+    "lib/installers.js",
+    "index.js"
+  ],
+  "prompt": "Why is dmg installation not working - additionally when downloading a file from github or somewhere else log the full path to the downloaded file in its temp dir.",
+  "timestamp": "2025-08-14T21:11:52.711Z",
+  "cwd": "/Users/tjs/Documents/.coding/repos/justinstall"
+}

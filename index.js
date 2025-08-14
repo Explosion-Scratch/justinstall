@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const { performInstallation } = require("./lib/installer");
 const {
   checkForUpdates,
