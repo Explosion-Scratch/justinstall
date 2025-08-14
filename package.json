@@ -1,6 +1,7 @@
 {
   "name": "justinstall",
   "main": "index.js",
+  "version": "v1.2.0",
   "bin": {
     "justinstall": "index.js"
   },
