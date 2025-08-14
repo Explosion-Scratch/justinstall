@@ -1,0 +1,13 @@
+{
+  "name": "justinstall",
+  "main": "index.js",
+  "bin": {
+    "justinstall": "index.js"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
