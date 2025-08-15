@@ -19,7 +19,7 @@ const {
   confirm,
 } = require("./lib/utils");
 
-const HELP = `justinstall <github-url|file-url|local-file> [options]
+const HELP = `justinstall <github-url|website-url|file-url|local-file> [options]
 \tv1.1.0 - Just install anything. Supports .tar.gz, .zip, .dmg, .app, .pkg, and .deb files. 
 \tBinaries will be installed to ~/.local/bin.
 
@@ -33,6 +33,7 @@ const HELP = `justinstall <github-url|file-url|local-file> [options]
 \tExamples:
 \t  justinstall atuinsh/atuin
 \t  justinstall https://github.com/junegunn/fzf/
+\t  justinstall https://example.com/downloads/
 \t  justinstall https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg
 \t  justinstall tailscale.pkg
 \t  justinstall --search
