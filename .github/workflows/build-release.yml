@@ -1,0 +1,68 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: latest
+        
+    - name: Install dependencies
+      run: bun install
+      
+    - name: Make build script executable
+      run: chmod +x build.sh
+      
+    - name: Build binaries
+      run: ./build.sh
+      
+    - name: List build artifacts
+      run: ls -la build/
+      
+    - name: Generate release tag
+      id: tag
+      run: |
+        VERSION=$(cat package.json | jq -r '.version')
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        TAG="$VERSION-$TIMESTAMP"
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        
+    - name: Create Pre-Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.tag.outputs.tag }}
+        name: "Pre-release ${{ steps.tag.outputs.tag }}"
+        body: |
+          Automated pre-release build from commit ${{ github.sha }}
+          
+          **Version:** ${{ steps.tag.outputs.version }}
+          **Built on:** ${{ github.run_id }}
+          **Commit:** ${{ github.sha }}
+          
+          ## Binaries
+          - `justinstall-${{ steps.tag.outputs.version }}-linux-x64` - Linux x64
+          - `justinstall-${{ steps.tag.outputs.version }}-linux-arm64` - Linux ARM64  
+          - `justinstall-${{ steps.tag.outputs.version }}-windows-x64` - Windows x64
+          - `justinstall-${{ steps.tag.outputs.version }}-darwin-x64` - macOS x64
+          - `justinstall-${{ steps.tag.outputs.version }}-darwin-arm64` - macOS ARM64 (Apple Silicon)
+        files: |
+          build/*
+        prerelease: true
+        draft: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
