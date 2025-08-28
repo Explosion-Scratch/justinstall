@@ -33,6 +33,26 @@ jobs:
     - name: List build artifacts
       run: ls -la build/
       
+    - name: Verify all binaries were created
+      run: |
+        VERSION=$(cat package.json | jq -r '.version')
+        EXPECTED_FILES=(
+          "justinstall-$VERSION-linux-x64"
+          "justinstall-$VERSION-linux-arm64" 
+          "justinstall-$VERSION-windows-x64"
+          "justinstall-$VERSION-darwin-x64"
+          "justinstall-$VERSION-darwin-arm64"
+        )
+        
+        for file in "${EXPECTED_FILES[@]}"; do
+          if [[ ! -f "build/$file" ]]; then
+            echo "❌ Missing binary: build/$file"
+            exit 1
+          else
+            echo "✅ Found binary: build/$file"
+          fi
+        done
+      
     - name: Generate release tag
       id: tag
       run: |
