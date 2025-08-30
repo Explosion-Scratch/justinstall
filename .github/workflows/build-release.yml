@@ -1,0 +1,160 @@
+name: Build and Release
+
+# Only trigger on pushes to main branch that modify code files
+# Manual workflow dispatch is also supported for testing
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+env:
+  # Cache key version - increment to invalidate caches
+  CACHE_VERSION: v1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write  # Required for creating releases and uploading assets
+      
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.tag.outputs.tag }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: latest
+        
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.bun/install/cache
+        key: bun-${{ env.CACHE_VERSION }}-${{ hashFiles('**/bun.lockb', '**/package.json') }}
+        restore-keys: |
+          bun-${{ env.CACHE_VERSION }}-
+        
+    - name: Install dependencies
+      run: bun install --frozen-lockfile
+      
+    - name: Extract version
+      id: version
+      run: |
+        VERSION=$(cat package.json | jq -r '.version')
+        if [[ -z "$VERSION" || "$VERSION" == "null" ]]; then
+          echo "❌ Failed to extract version from package.json"
+          exit 1
+        fi
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "✅ Extracted version: $VERSION"
+      
+    - name: Validate build script
+      run: |
+        if [[ ! -x "build.sh" ]]; then
+          echo "❌ build.sh is not executable"
+          exit 1
+        fi
+        
+    - name: Build binaries
+      run: |
+        echo "🔨 Building binaries for version ${{ steps.version.outputs.version }}"
+        ./build.sh
+        
+    - name: Verify build artifacts
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        BUILD_DIR="build"
+        
+        # Expected binaries based on current build script behavior
+        declare -A EXPECTED_BINARIES=(
+          ["linux-x64"]="justinstall-$VERSION-linux-x64"
+          ["linux-arm64"]="justinstall-$VERSION-linux-arm64"
+          ["windows-x64"]="justinstall-$VERSION-windows-x64.exe"
+          ["darwin-x64"]="justinstall-$VERSION-darwin-x64"
+          ["darwin-arm64"]="justinstall-$VERSION-darwin-arm64"
+        )
+        
+        echo "📋 Verifying build artifacts..."
+        ALL_FOUND=true
+        
+        for platform in "${!EXPECTED_BINARIES[@]}"; do
+          binary="${EXPECTED_BINARIES[$platform]}"
+          if [[ -f "$BUILD_DIR/$binary" ]]; then
+            size=$(stat -f%z "$BUILD_DIR/$binary" 2>/dev/null || stat -c%s "$BUILD_DIR/$binary" 2>/dev/null)
+            echo "✅ $platform: $binary (${size} bytes)"
+          else
+            echo "❌ Missing $platform binary: $binary"
+            ALL_FOUND=false
+          fi
+        done
+        
+        if [[ "$ALL_FOUND" == "false" ]]; then
+          echo "❌ Build verification failed - some binaries are missing"
+          echo "📁 Contents of build directory:"
+          ls -la "$BUILD_DIR/" || echo "Build directory not found"
+          exit 1
+        fi
+        
+        echo "✅ All expected binaries verified successfully"
+      
+    - name: Generate release tag
+      id: tag
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        TIMESTAMP=$(date -u +%Y%m%d-%H%M%S)
+        TAG="$VERSION-$TIMESTAMP"
+        
+        # Validate tag format
+        if [[ ! "$TAG" =~ ^[a-zA-Z0-9v][a-zA-Z0-9v._-]*$ ]]; then
+          echo "❌ Invalid tag format: $TAG"
+          exit 1
+        fi
+        
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "✅ Generated release tag: $TAG"
+        
+    - name: Create Pre-Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.tag.outputs.tag }}
+        name: "Pre-release ${{ steps.tag.outputs.tag }}"
+        body: |
+          🤖 **Automated pre-release build**
+          
+          **Version:** `${{ steps.version.outputs.version }}`
+          **Commit:** [`${{ github.sha }}`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }})
+          **Build:** [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          **Built:** ${{ steps.tag.outputs.tag }}
+          
+          ## 📦 Available Binaries
+          
+          | Platform | Binary | Architecture |
+          |----------|--------|--------------|
+          | Linux | `justinstall-${{ steps.version.outputs.version }}-linux-x64` | x86_64 |
+          | Linux | `justinstall-${{ steps.version.outputs.version }}-linux-arm64` | ARM64 |
+          | Windows | `justinstall-${{ steps.version.outputs.version }}-windows-x64.exe` | x86_64 |
+          | macOS | `justinstall-${{ steps.version.outputs.version }}-darwin-x64` | x86_64 |
+          | macOS | `justinstall-${{ steps.version.outputs.version }}-darwin-arm64` | ARM64 (Apple Silicon) |
+          
+          ## 📥 Installation
+          
+          Download the appropriate binary for your platform and add it to your PATH.
+          
+          ---
+          
+          > This is an automated pre-release. For stable releases, see the main releases.
+        files: build/*
+        prerelease: true
+        draft: false
+        fail_on_unmatched_files: true
+        generate_release_notes: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
