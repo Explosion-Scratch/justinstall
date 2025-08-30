@@ -11,14 +11,35 @@ https://github.com/Explosion-Scratch/justinstall/assets/61319150/4a05e6e0-065a-4
 Grab the binary from the github releases (ironically you can use this tool to install itself)
 
 ### Automated Builds
-This project uses GitHub Actions to automatically build binaries for all supported platforms on every push to the main branch. Pre-releases are created with binaries for:
-- Linux x64
-- Linux ARM64  
-- Windows x64
-- macOS x64
-- macOS ARM64 (Apple Silicon)
 
-You can find the latest pre-releases in the [releases page](https://github.com/Explosion-Scratch/justinstall/releases).
+This project uses GitHub Actions to automatically build cross-platform binaries whenever code changes are pushed to the main branch. The build system creates pre-releases with binaries for all supported platforms:
+
+| Platform | Architecture | Binary Name |
+|----------|--------------|-------------|
+| Linux | x86_64 | `justinstall-{version}-linux-x64` |
+| Linux | ARM64 | `justinstall-{version}-linux-arm64` |
+| Windows | x86_64 | `justinstall-{version}-windows-x64.exe` |
+| macOS | x86_64 | `justinstall-{version}-darwin-x64` |
+| macOS | ARM64 (Apple Silicon) | `justinstall-{version}-darwin-arm64` |
+
+#### Getting Pre-built Binaries
+
+1. Visit the [releases page](https://github.com/Explosion-Scratch/justinstall/releases)
+2. Look for the latest pre-release (marked with "Pre-release" tag)
+3. Download the appropriate binary for your platform
+4. Make the binary executable: `chmod +x justinstall-*` (Unix/macOS)
+5. Add it to your PATH or run directly
+
+#### Build Process
+
+The automated build process:
+- Triggers only on code changes (ignoring documentation updates)
+- Uses Bun's native compilation for optimal performance
+- Verifies all binaries are created successfully before releasing
+- Creates timestamped pre-releases to avoid version conflicts
+- Includes comprehensive build metadata and download instructions
+
+For development builds or custom compilation, see the [Building](#building) section below.
 
 ## Features
 
@@ -56,6 +77,47 @@ justinstall <github-url|file-url|local-file>
 3. Local Files: Installs software from files already present on the local system.
 
 ## Contributing
+
+## Building
+
+To build the project locally:
+
+### Prerequisites
+
+- [Bun](https://bun.sh/) runtime (latest version)
+- Unix-like environment (Linux, macOS, or WSL on Windows)
+
+### Build Steps
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Explosion-Scratch/justinstall.git
+   cd justinstall
+   ```
+
+2. Install dependencies:
+   ```bash
+   bun install
+   ```
+
+3. Build all platform binaries:
+   ```bash
+   ./build.sh
+   ```
+
+This creates optimized binaries in the `build/` directory for all supported platforms. The build script uses Bun's native compilation feature for maximum performance and minimal dependencies.
+
+### Development
+
+For development and testing:
+```bash
+# Run directly with Bun
+bun run index.js --help
+
+# Or make executable and run
+chmod +x index.js
+./index.js --help
+```
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 

@@ -1,0 +1,59 @@
+name: Validate
+
+# Run on PRs and pushes to validate the codebase
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v1
+      with:
+        bun-version: latest
+        
+    - name: Install dependencies
+      run: bun install --frozen-lockfile
+      
+    - name: Validate package.json
+      run: |
+        VERSION=$(cat package.json | jq -r '.version')
+        if [[ -z "$VERSION" || "$VERSION" == "null" ]]; then
+          echo "❌ Invalid or missing version in package.json"
+          exit 1
+        fi
+        echo "✅ Version: $VERSION"
+        
+    - name: Check build script
+      run: |
+        if [[ ! -x "build.sh" ]]; then
+          echo "❌ build.sh is not executable"
+          exit 1
+        fi
+        echo "✅ build.sh is executable"
+        
+    - name: Test build process
+      run: |
+        echo "🔨 Testing build process..."
+        timeout 300 ./build.sh || {
+          echo "❌ Build failed or timed out"
+          exit 1
+        }
+        
+        # Quick verification that some binaries were created
+        if [[ ! -d "build" ]] || [[ -z "$(ls -A build/)" ]]; then
+          echo "❌ No build artifacts created"
+          exit 1
+        fi
+        
+        echo "✅ Build test completed successfully"
+        echo "📦 Created artifacts:"
+        ls -la build/
