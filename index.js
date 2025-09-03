@@ -20,7 +20,8 @@ const {
 } = require("./lib/utils");
 
 const HELP = `justinstall <github-url|website-url|file-url|local-file> [options]
-\tv1.1.0 - Just install anything. Supports .tar.gz, .zip, .dmg, .app, .pkg, and .deb files. 
+\tv1.2.0 - Just install anything. Supports .tar.gz, .zip, .dmg, .app, .pkg, and .deb files. 
+\tZIP files containing DMG or PKG packages are automatically detected and installed.
 \tBinaries will be installed to ~/.local/bin.
 
 \tOptions:
