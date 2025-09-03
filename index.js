@@ -5,6 +5,7 @@ const {
   checkForUpdates,
   performUpdate,
   listInstalled,
+  performUninstall,
 } = require("./lib/updater");
 const {
   interactiveSearch,
@@ -28,6 +29,7 @@ const HELP = `justinstall <github-url|website-url|file-url|local-file> [options]
 \t  --search [query]     Interactive search for GitHub repositories, or direct search with query
 \t  --first <query>      Find and install most-starred repo matching query
 \t  --update [package]   Update all packages or specific package
+\t  --uninstall <name>   Uninstall a previously installed package
 \t  --list               List installed packages
 \t  -h, --help           Show this help
 
@@ -57,14 +59,36 @@ const handleUpdateCommand = async (flags, args) => {
     const customFilePath = args[0]; // Optional custom file path
 
     log.debug(`Checking for updates: ${flags.updatePackage}`);
-    const updates = await checkForUpdates(flags.updatePackage);
+    const updateInfo = await checkForUpdates(flags.updatePackage);
 
-    if (updates.length === 0) {
+    // If we definitively know there is no update and there wasn't an error, exit early
+    if (updateInfo.hasUpdate === false && !updateInfo.error) {
       log.log(`${flags.updatePackage} is already up to date`);
       return;
     }
 
-    const updateInfo = updates[0];
+    // If we can't verify the version or canUpdate flag is missing, attempt reinstall
+    const unverifiable =
+      updateInfo.error === true ||
+      updateInfo.hasUpdate === undefined ||
+      updateInfo.canUpdate === undefined;
+
+    if (unverifiable) {
+      log.warn(
+        `Unable to verify current version for ${flags.updatePackage}. Will reinstall to ensure freshness.`
+      );
+      if (await confirm(`Proceed to reinstall ${flags.updatePackage}?`)) {
+        await performUpdate(
+          {
+            name: flags.updatePackage,
+            source: updateInfo.source,
+          },
+          customFilePath
+        );
+      }
+      return;
+    }
+
     if (!updateInfo.canUpdate) {
       log.warn(
         `Update available for ${flags.updatePackage} but ${updateInfo.reason}`
@@ -119,6 +143,15 @@ const main = async () => {
 
   if (flags.update !== undefined) {
     await handleUpdateCommand(flags, remainingArgs);
+    return;
+  }
+
+  if (flags.uninstall) {
+    const name = flags.uninstallPackage;
+    if (!name) {
+      throw new Error("--uninstall requires a package name");
+    }
+    await performUninstall(name);
     return;
   }
 
