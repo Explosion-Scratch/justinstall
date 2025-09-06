@@ -25,6 +25,11 @@ const HELP = `justinstall <github-url|website-url|file-url|local-file> [options]
 \tZIP files containing DMG or PKG packages are automatically detected and installed.
 \tBinaries will be installed to ~/.local/bin.
 
+\tGitHub Release Strategy:
+\t  - Prefers stable releases over prereleases
+\t  - Falls back to latest prerelease if no stable releases exist
+\t  - Supports specific release URLs
+
 \tOptions:
 \t  --search [query]     Interactive search for GitHub repositories, or direct search with query
 \t  --first <query>      Find and install most-starred repo matching query
@@ -36,6 +41,7 @@ const HELP = `justinstall <github-url|website-url|file-url|local-file> [options]
 \tExamples:
 \t  justinstall atuinsh/atuin
 \t  justinstall https://github.com/junegunn/fzf/
+\t  justinstall https://github.com/Explosion-Scratch/whisper-mac/releases/tag/v1.0.0-pre-41e7098-20250906-154430
 \t  justinstall https://example.com/downloads/
 \t  justinstall https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg
 \t  justinstall tailscale.pkg
