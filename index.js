@@ -41,7 +41,7 @@ const HELP = `justinstall <github-url|website-url|file-url|local-file> [options]
 \tExamples:
 \t  justinstall atuinsh/atuin
 \t  justinstall https://github.com/junegunn/fzf/
-\t  justinstall https://github.com/Explosion-Scratch/whisper-mac/releases/tag/v1.0.0-pre-41e7098-20250906-154430
+\t  justinstall https://github.com/Explosion-Scratch/whisper-mac
 \t  justinstall https://example.com/downloads/
 \t  justinstall https://dl.google.com/chrome/mac/universal/stable/GGRO/googlechrome.dmg
 \t  justinstall tailscale.pkg

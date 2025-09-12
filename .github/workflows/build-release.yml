@@ -88,7 +88,7 @@ jobs:
         for platform in "${!EXPECTED_BINARIES[@]}"; do
           binary="${EXPECTED_BINARIES[$platform]}"
           if [[ -f "$BUILD_DIR/$binary" ]]; then
-            size=$(stat -f%z "$BUILD_DIR/$binary" 2>/dev/null || stat -c%s "$BUILD_DIR/$binary" 2>/dev/null)
+            size=$(stat -c%s "$BUILD_DIR/$binary" 2>/dev/null)
             echo "✅ $platform: $binary (${size} bytes)"
           else
             echo "❌ Missing $platform binary: $binary"

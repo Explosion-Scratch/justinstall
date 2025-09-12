@@ -1,15 +1,23 @@
 {
   "selectedFiles": [
-    "lib/utils.js",
+    ".dir2md.json",
+    ".github/workflows/build-release.yml",
+    ".gitignore",
+    ".npmignore",
+    "README.md",
+    "build.sh",
+    "index.js",
+    "jsconfig.json",
     "lib/config.js",
+    "lib/installer.js",
+    "lib/installers.js",
     "lib/search.js",
     "lib/sources.js",
     "lib/updater.js",
-    "lib/installer.js",
-    "lib/installers.js",
-    "index.js"
+    "lib/utils.js",
+    "package.json"
   ],
-  "prompt": "Why is dmg installation not working - additionally when downloading a file from github or somewhere else log the full path to the downloaded file in its temp dir.",
-  "timestamp": "2025-08-14T21:11:52.711Z",
-  "cwd": "/Users/tjs/Documents/.coding/repos/justinstall"
+  "timestamp": "2025-09-09T00:06:22.210Z",
+  "cwd": "/Users/tjs/Documents/.coding/repos/justinstall",
+  "prompt": "Find bugs comprehensively across this project then make a plan to fix them, finally write out the fixed code. Adhere to clean code principles"
 }
