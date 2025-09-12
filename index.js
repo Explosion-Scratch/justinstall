@@ -36,6 +36,7 @@ const HELP = `justinstall <github-url|website-url|file-url|local-file> [options]
 \t  --update [package]   Update all packages or specific package
 \t  --uninstall <name>   Uninstall a previously installed package
 \t  --list               List installed packages
+\t  --yes                Answer yes to all prompts
 \t  -h, --help           Show this help
 
 \tExamples:
@@ -83,13 +84,14 @@ const handleUpdateCommand = async (flags, args) => {
       log.warn(
         `Unable to verify current version for ${flags.updatePackage}. Will reinstall to ensure freshness.`
       );
-      if (await confirm(`Proceed to reinstall ${flags.updatePackage}?`)) {
+      if (await confirm(`Proceed to reinstall ${flags.updatePackage}?`, "y", flags.yes)) {
         await performUpdate(
           {
             name: flags.updatePackage,
             source: updateInfo.source,
           },
-          customFilePath
+          customFilePath,
+          flags.yes
         );
       }
       return;
@@ -105,8 +107,8 @@ const handleUpdateCommand = async (flags, args) => {
     log.log(
       `Update available for ${flags.updatePackage}: ${updateInfo.reason}`
     );
-    if (await confirm(`Proceed with update?`)) {
-      await performUpdate(updateInfo, customFilePath);
+    if (await confirm(`Proceed with update?`, "y", flags.yes)) {
+      await performUpdate(updateInfo, customFilePath, flags.yes);
     }
   } else {
     // Update all packages
@@ -123,11 +125,11 @@ const handleUpdateCommand = async (flags, args) => {
       log.log(`  ${update.name}: ${update.reason}`);
     }
 
-    if (await confirm(`Update all ${updates.length} package(s)?`)) {
+    if (await confirm(`Update all ${updates.length} package(s)?`, "y", flags.yes)) {
       for (const update of updates) {
         if (update.canUpdate) {
           try {
-            await performUpdate(update);
+            await performUpdate(update, null, flags.yes);
           } catch (error) {
             log.error(`Failed to update ${update.name}: ${error.message}`);
           }
@@ -157,7 +159,7 @@ const main = async () => {
     if (!name) {
       throw new Error("--uninstall requires a package name");
     }
-    await performUninstall(name);
+    await performUninstall(name, flags.yes);
     return;
   }
 
@@ -173,7 +175,7 @@ const main = async () => {
       if (repos && repos.length > 0) {
         const log = createLogger();
         if (
-          await confirm(`Install the first result (${repos[0].full_name})?`)
+          await confirm(`Install the first result (${repos[0].full_name})?`, "y", flags.yes)
         ) {
           await performInstallation([repos[0].full_name]);
         } else {
@@ -199,7 +201,7 @@ const main = async () => {
 
   if (flags.first) {
     const repo = await findFirstRepository(flags.first);
-    await performInstallation([repo.full_name]);
+    await performInstallation([repo.full_name], false, flags.yes);
     return;
   }
 
@@ -208,7 +210,7 @@ const main = async () => {
     return;
   }
 
-  await performInstallation(remainingArgs);
+  await performInstallation(remainingArgs, false, flags.yes);
 };
 
 // Main execution
