@@ -224,6 +224,7 @@ const main = async () => {
   } catch (error) {
     const log = createLogger();
     log.error(error.message);
+    log.error(error.stack);
     process.exit(1);
   }
 })();
