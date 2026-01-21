@@ -1,7 +1,13 @@
 {
   "name": "justinstall",
   "main": "index.js",
-  "version": "v1.2.0",
+  "version": "v1.3.0",
+  "scripts": {
+    "start": "bun run index.js",
+    "test": "bun test",
+    "build": "./build.sh",
+    "install:local": "./install.sh"
+  },
   "bin": {
     "justinstall": "index.js"
   },
